@@ -1,0 +1,15 @@
+<polymer-element name="x-index" noscript>
+  <template>
+    <h1>Dice Labeler</h1>
+    <h2>Experiments</h2>
+    <json-rpc
+       auto="true"
+       method="Experiments.List"
+       result="{{experiments}}"></json-rpc>
+    <template repeat="{{exp in experiments.experiments}}">
+      <div>
+        <a href="#/e/{{exp.id}}/participants">{{exp.experiment.name}}</a>
+      </div>
+    </template>
+  </template>
+</polymer-element>

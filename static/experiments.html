@@ -1,0 +1,115 @@
+<polymer-element name="experiment-index">
+  <template>
+    <h1>Dice Labeler</h1>
+    <h2>Experiments</h2>
+    <json-rpc auto
+              method="Experiments.List"
+              result="{{experiments}}"></json-rpc>
+    <ul>
+      <template repeat="{{exp in experiments.experiments}}">
+        <li>
+          <a href="#/e/{{exp.id}}/view">{{exp.experiment.name}}</a>
+        </li>
+      </template>
+    </ul>
+    <a href="/#/e/new">Create Experiment</a>
+  </template>
+  <script>
+    Polymer({});
+  </script>
+</polymer-element>
+
+<polymer-element name="experiment-new">
+  <template>
+    <h1>Dice Labeler</h1>
+    <h2>Create experiment</h2>
+
+    <template if="{{err}}">
+      Error: {{err}}
+    </template>
+    <json-rpc id="rpc"
+              method="Experiments.Post"
+              param="{{ {name: name} }}"
+              on-core-response="{{success}}"
+              result="{{result}}"
+              error="{{err}}"></json-rpc>
+    <form on-submit="{{go}}">
+      <div>
+        <label>Name</label>
+        <input type="text" value="{{name}}" required>
+      </div>
+      <div>
+        <button>Go</button>
+      </div>
+    </form>
+  </template>
+  <script>
+    Polymer({
+      go: function() { this.$.rpc.go() },
+      success: function() {
+        document.location.hash = '/e/' + this.result.id + '/view';
+      }
+    });
+  </script>
+</polymer-element>
+
+<polymer-element name="experiment-view" attributes="params">
+  <template>
+    <h1>Dice Labeler</h1>
+    <template if="{{err}}">Error: {{err}}</template>
+    <json-rpc
+       auto
+       method="Experiments.Get"
+       param="{{ {id: params.id} }}"
+       result="{{experiment}}"></json-rpc>
+    <h2>Experiment {{experiment.name}}</h2>
+
+    <h3>Upload Participants</h3>
+    <form id="participantsForm" on-submit="{{readParticipantsCsv}}">
+      <input type="file" id="participantsFile" required>
+      <button>Upload</button>
+    </form>
+    <json-rpc
+       id="participantsRpc"
+       method="Participants.PutCsv"
+       error="{{err}}"
+       on-core-response="{{setPutParticipantsDone}}"></json-rpc>
+    <template if="{{putParticipantsDone}}">Done!</template>
+
+    <h3>Upload Photos</h3>
+    <json-rpc
+       auto
+       method="Photos.GetUploadUrl"
+       result="{{photoUploadUrl}}"
+       error="{{err}}"></json-rpc>
+    <form action="{{.}}" method="POST" enctype="multipart/form-data">
+Upload File: <input type="file" name="file"><br>
+<input type="submit" name="submit" value="Submit">
+</form></body></html>
+
+  </template>
+  <script>
+    Polymer({
+      readParticipantsCsv: function(e) {
+        var f = this.$.participantsFile.files[0];
+        if (!f) {
+          this.err = "No such file";
+          return;
+        }
+
+        var r = new FileReader();
+        r.onload = function(e) {
+          var rpc = this.$.participantsRpc;
+          rpc.param = { experimentId: this.params.id,
+                        csv: e.target.result };
+          rpc.go();
+        }.bind(this);
+        r.readAsText(f);
+      },
+      setPutParticipantsDone: function() {
+        this.$.participantsForm.reset();
+        this.putParticipantsDone = true;
+      },
+    });
+  </script>
+</polymer-element>
