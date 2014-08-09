@@ -2,12 +2,7 @@
   "name": "dice",
   "version": "0.0.0",
   "authors": [
-    "hjfreyer <yt@hjfreyer.com>"
+    "Hunter Freyer <yt@hjfreyer.com>"
   ],
-  "private": true,
-  "dependencies": {
-    "polymer": "Polymer/polymer#0.3.4",
-    "flatiron-director": "PolymerLabs/flatiron-director#0.3.0",
-    "director": "~1.2.2"
-  }
+  "private": true
 }

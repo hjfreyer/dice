@@ -1,6 +1,6 @@
 package main
 
-type Experiment struct {
+type Collection struct {
 	Name string `json:"name"`
 }
 
