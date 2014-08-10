@@ -30,35 +30,34 @@
             </div>
           </div>
         </nav>
-        <template if="{{authorized}}">
-          <div class="container">
-            <template if="{{error}}">
-              <div class="alert alert-danger" role="alert">
-                <b>Achtung!</b>
-                {{error}}
-              </div>
+        <div class="container"
+             style="display: {{authorized ? 'block' : 'none'}}">
+          <template if="{{error}}">
+            <div class="alert alert-danger" role="alert">
+              <b>Achtung!</b>
+              {{error}}
+            </div>
+          </template>
+          <template if="{{!error}}">
+            <template if="{{!annotator}}">
+              <div class="alert alert-info">Loading...</div>
             </template>
-            <template if="{{!error}}">
-              <template if="{{!annotator}}">
-                <div class="alert alert-info">Loading...</div>
-              </template>
-              <div class="row">
-                <div class="col-md-10">
-                  <canvas id="canvas" width="{{width}}" height="{{height}}"></canvas>
+            <div class="row">
+              <div class="col-md-10">
+                <canvas id="canvas" width="{{width}}" height="{{height}}"></canvas>
+              </div>
+              <div class="col-md-2">
+                <div class="form-group">
+                  <label>Description</label>
+                  <input id="description" type="text" class="form-control">
                 </div>
-                <div class="col-md-2">
-                  <div class="form-group">
-                    <label>Description</label>
-                    <input id="description" type="text" class="form-control">
-                  </div>
-                  <div class="form-group">
-                    <button class="btn btn-default" on-click="{{resetModel}}">Reset</button>
-                  </div>
+                <div class="form-group">
+                  <button class="btn btn-default" on-click="{{resetModel}}">Reset</button>
                 </div>
               </div>
-            </template>
-          </div>
-        </template>
+            </div>
+          </template>
+        </div>
       </template>
       <script src="x-app.js"></script>
     </polymer-element>
