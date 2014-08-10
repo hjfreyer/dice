@@ -27,6 +27,5 @@
   },
   "_source": "git://github.com/addyosmani/google-signin.git",
   "_target": "~0.0.8",
-  "_originalSource": "google-signin",
-  "_direct": true
+  "_originalSource": "google-signin"
 }
