@@ -52,7 +52,6 @@
     this.model.getRoot().addEventListener(
       gapi.drive.realtime.EventType.VALUE_CHANGED,
       function(e) {
-        console.log(e);
         this.update();
       }.bind(this));
 
