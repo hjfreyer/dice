@@ -69,6 +69,7 @@ Polymer('x-app', {
     this.width = 800;
     this.height = 600;
 
+    this.authorized = false;
     this.error = null;
 
     this.depman = new DependencyManager();
@@ -127,6 +128,7 @@ Polymer('x-app', {
   },
   signIn: function(e) {
     this.depman.provide('authToken', e.detail.result);
+    this.authorized = true;
   },
   resetModel: function() {
     this.annotator.reset();
