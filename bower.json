@@ -4,5 +4,10 @@
   "authors": [
     "Hunter Freyer <yt@hjfreyer.com>"
   ],
-  "private": true
+  "private": true,
+  "dependencies": {
+    "platform": "Polymer/platform#~0.3.5",
+    "polymer": "Polymer/polymer#~0.3.5",
+    "purl": "~2.3.1"
+  }
 }
