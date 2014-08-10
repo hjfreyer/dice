@@ -7,80 +7,126 @@ var SCOPES = [
   'https://www.googleapis.com/auth/drive.file'
 ];
 
-var auth = function(immediate, callback) {
-  gapi.auth.authorize({
-    client_id: CLIENT_ID,
-    scope: SCOPES,
-    immediate: immediate
-  }, callback);
+var isEmpty = function(obj) {
+  for (var x in obj) {
+    return false;
+  }
+  return true;
 };
 
-Polymer('x-init', {
-  state: 'LOADING',
-  ready: function() {
-    this.url = purl();
+var DependencyManager = function() {
+  this._ready = [];
+  this._waiting = [];
 
-    if (!this.url.param('state')) {
-      this.state = 'BAD_URL';
-      return;
-    }
-    this.driveState = JSON.parse(this.url.param('state'));
-    this.state = 'LOADING';
+  this._providedValues = {};
+};
 
-    gapi.load('auth:client,drive-realtime', function() {
-      auth(true, this.handleAuthResult.bind(this));
-    }.bind(this));
-  },
-  login: function() {
-    this.state = 'LOADING';
-    auth(false, this.handleAuthResult.bind(this));
-  },
-  handleAuthResult: function(authResult) {
-    if (authResult && !authResult.error) {
-      this.state = 'LOGGED_IN';
+var Dependency = function(requires, load) {
+  this.requires = requires;
+  this.load = load;
+
+  this.stillRequires = {};
+  this.requires.forEach(function(req) {
+    this.stillRequires[req] = true;
+  }, this);
+};
+
+DependencyManager.prototype.add = function(requires, load) {
+  this._waiting.push(new Dependency(requires, load));
+};
+
+DependencyManager.prototype.get = function(name) {
+  return this._providedValues[name];
+};
+
+DependencyManager.prototype.provide = function(name, value) {
+  this._providedValues[name] = value;
+
+  var stillWaiting = [];
+  this._waiting.forEach(function(dep) {
+    delete dep.stillRequires[name];
+    if (isEmpty(dep.stillRequires)) {
+      this._ready.push(dep);
     } else {
-      this.state = 'LOGGED_OUT';
+      stillWaiting.push(dep);
     }
-  }
-});
+  }, this);
+  this._waiting = stillWaiting;
+  this.go();
+};
+
+DependencyManager.prototype.go = function() {
+  var toExec = this._ready;
+  this._ready = [];
+  toExec.forEach(function(dep) { dep.load(); }, this);
+};
 
 Polymer('x-app', {
-  ready: function() {
+  created: function() {
+    this.clientId = CLIENT_ID;
+    this.scopes = SCOPES.join(' ');
+
     this.width = 800;
     this.height = 600;
-    this.canvas = this.$.canvas;
 
-    gapi.drive.realtime.load(this.driveState.ids[0],
-                             this.onFileLoaded.bind(this));
-    this.image = new Image();
-    this.image.onload = this.onImageLoaded.bind(this);
-    this.image.src = "https://docs.google.com/uc?id=" + this.driveState.ids[0];
+    this.error = null;
 
-    this.imageReady = false;
-    this.docReady = false;
+    this.depman = new DependencyManager();
+    this.annotator = null;
   },
-  onFileLoaded: function(doc) {
-    this.docReady = true;
-    this.doc = doc;
-    this.root = this.doc.getModel().getRoot();
-    if (!this.root.get('title')) {
-      this.root.set('title', this.doc.getModel().createString());
-    }
-    gapi.drive.realtime.databinding.bindString(this.root.get('title'),
-                                               this.$.title);
-    this.onAllLoaded();
-  },
-  onImageLoaded: function() {
-    this.imageReady = true;
-    this.onAllLoaded();
-  },
-  onAllLoaded: function() {
-    if (!this.docReady || !this.imageReady) {
+  ready: function() {
+    var url = purl();
+    if (!url.param('state')) {
+      this.error = 'Looks like you came here directly. You should ' +
+        'have come here via Google Drive. Work on that.';
       return;
     }
-    this.annotator = new Annotator(
-      this.canvas, this.image, this.doc.getModel());
-    this.annotator.draw();
+    var driveState = JSON.parse(url.param('state'));
+    this.fileId = driveState.ids[0];
+    this.canvas = this.$.canvas;
+
+    var _this = this;
+    // Annotator
+    this.depman.add(['image', 'doc'], function() {
+      _this.annotator = new Annotator(_this.canvas,
+                                      _this.depman.get('image'),
+                                      _this.depman.get('doc').getModel());
+    });
+
+    // Doc
+    this.depman.add(['authToken', 'realtime'], function() {
+      var realtime = _this.depman.get('realtime');
+      realtime.load(_this.fileId, function(doc) {
+        _this.depman.provide('doc', doc);
+        var str = doc.getModel().getRoot().get('description');
+        if (!str) {
+          str = doc.getModel().createString();
+          doc.getModel().getRoot().set('description', str);
+        }
+
+        realtime.databinding.bindString(str, _this.$.description);
+      });
+    });
+
+    // Realtime
+    this.depman.add(['gapi'], function() {
+      var gapi = _this.depman.get('gapi');
+      gapi.load('drive-realtime', function() {
+        _this.depman.provide('realtime', gapi.drive.realtime);
+      });
+    });
+
+    // Image
+    var image = new Image();
+    image.onload = function() {
+      _this.depman.provide('image', image);
+    };
+    image.src = "https://docs.google.com/uc?id=" + this.fileId;
+
+    this.depman.provide('gapi', window.gapi);
+  },
+  signIn: function(e) {
+    this.depman.provide('authToken', e.detail.result);
   },
   resetModel: function() {
     this.annotator.reset();

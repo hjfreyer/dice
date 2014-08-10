@@ -43,8 +43,9 @@
 
     this.context = this.canvas.getContext('2d');
     this.canvas.onclick = function(e) {
-      var x = e.pageX - this.canvas.offsetLeft;
-      var y = e.pageY - this.canvas.offsetTop;
+      var rect = this.canvas.getBoundingClientRect()
+      var x = e.pageX - (rect.left + window.pageXOffset);
+      var y = e.pageY - (rect.top + window.pageYOffset);
       this.onClick(x, y);
     }.bind(this);
 
