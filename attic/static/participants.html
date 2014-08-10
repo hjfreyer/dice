@@ -1,0 +1,155 @@
+<polymer-element name="json-rpc" attributes="method param result error auto">
+  <template>
+    <core-ajax
+       id="ajax"
+       url="/rpc"
+       method="POST"
+       contentType="application/json"
+       handleAs="json"
+       auto?="{{auto}}"
+       on-core-response="{{ jsonRpcResponse_ }}"
+       on-core-error="{{ jsonRpcError_ }}"
+       on-core-complete="{{ jsonRpcDiscard_ }}"></core-ajax>
+  </template>
+  <script>
+    Polymer({
+      auto: false,
+      result: null,
+      error: null,
+
+      ready: function() {
+        this.updateBody();
+      },
+      go: function() {
+        this.updateBody();
+        this.$.ajax.go();
+      },
+      updateBody: function() {
+        this.$.ajax.body = JSON.stringify({
+          id: 0,
+          method: this.method,
+          params: [this.param]
+        });
+      },
+      jsonRpcResponse_: function(e) {
+        var response = e.detail.response;
+        if (response.error) {
+          this.error = response.error;
+          e.stopPropagation();
+          this.fire('core-error', {response: response.error});
+        } else {
+          this.result = response.result;
+        }
+      },
+      jsonRpcError_: function(e) {
+        this.error = e.detail.response;
+      },
+      jsonRpcDiscard_: function(e) {
+        e.stopPropagation();
+      }
+    });
+  </script>
+</polymer-element>
+
+<polymer-element name="participant-edit-panel" attributes="participant">
+  <template>
+    <json-rpc id="rpc"
+              method="Participants.Put"
+              on-core-response="{{ success }}"></json-rpc>
+    <form on-submit="{{ go }}">
+      <div>
+        <label>ID</label>
+        <input value="{{participant.id | toInteger}}" type="number">
+      </div>
+      <div>
+        <label>Name</label><input type="text" value="{{participant.name}}">
+      </div>
+      <div>
+        <label>Group</label><input value="{{participant.group}}">
+      </div>
+      <div>
+        <label>Sex</label>
+        <select value="{{participant.sex}}">
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+        </select>
+      </div>
+      <div>
+        <button>Submit</button>
+      </div>
+    </form>
+  </template>
+  <script>
+    Polymer('participant-edit-panel', {
+      toInteger: {
+        toDOM: function(value) {
+          return value;
+        },
+        toModel: function(value) {
+          return parseInt(value);
+        }
+      },
+      go: function() {
+        this.$.rpc.param = this.participant;
+        this.$.rpc.go();
+      },
+      success: function() {
+        document.location.hash =
+          "/e/" + this.participant.experimentId + "/participants";
+      },
+    });
+  </script>
+</polymer-element>
+
+<polymer-element name="participants-list" noscript attributes="params">
+  <template>
+    <json-rpc
+       auto="true"
+       method="Experiments.Get"
+       param="{{ {id: params.expId} }}"
+       result="{{experiment}}"
+       ></json-rpc>
+    <h1>Participants for {{experiment.name}}</h1>
+    <json-rpc
+       auto="true"
+       method="Participants.List"
+       param="{{ {id: params.expId} }}"
+       result="{{participants}}"></json-rpc>
+    <h2>
+      <a href="/#/e/{{params.expId}}/participant/new">Create New Participant</a>
+    </h2>
+    <ul>
+      <template repeat="{{p in participants.participants}}">
+        <li>{{p.name}}</li>
+      </template>
+    </ul>
+
+  </template>
+</polymer-element>
+
+<polymer-element name="participants-new" attributes="params" noscript>
+  <template>
+    <h1>Creating new Participant</h1>
+    <participant-edit-panel participant="{{ {experimentId: params.expId, id: 0} }}">
+    </participant-edit-panel>
+  </template>
+</polymer-element>
+
+<polymer-element name="participants-uploader" attributes="params" noscript>
+  <template>
+    <json-rpc
+       auto="true"
+       method="Experiments.Get"
+       param="{{ {id: params.expId} }}"
+       result="{{experiment}}"></json-rpc>
+    <h1>Upload Photos to {{experiment.name}}</h1>
+
+    <!-- <json-rpc -->
+    <!--    auto -->
+    <!--    method="Upload.GetUrl" -->
+    <!--    param="{{ {id: params.expId} }}" -->
+    <!--    result="{{uploadUrl}}"></json-rpc> -->
+    <input type="file" id="fileinput" />
+</template>
+
+</polymer-element>
