@@ -1,16 +1,20 @@
 {
   "name": "google-signin",
-  "version": "0.0.8",
   "description": "Web components to authenticate with Google services",
-  "dependencies": {
-    "polymer": "Polymer/polymer#master",
-    "google-apis": "PolymerLabs/google-apis#master",
-    "polymer-signals": "PolymerLabs/polymer-signals#master"
-  },
+  "homepage": "http://googlewebcomponents.github.io/google-signin",
+  "main": "google-signin.html",
   "authors": [
     "Addy Osmani"
   ],
   "license": "Apache2",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests",
+    "../"
+  ],
   "keywords": [
     "web-component",
     "web-components",
@@ -18,14 +22,21 @@
     "sign-in",
     "google"
   ],
-  "homepage": "https://github.com/addyosmani/google-signin",
-  "_release": "0.0.8",
-  "_resolution": {
-    "type": "version",
-    "tag": "v0.0.8",
-    "commit": "e51551ea2e928f4f881cd863a9f624bfc5847d86"
+  "dependencies": {
+    "polymer": "Polymer/polymer#~0.3.5",
+    "google-apis": "GoogleWebComponents/google-apis#~0.3.1",
+    "core-signals": "Polymer/core-signals#~0.3.5",
+    "paper-focusable": "Polymer/paper-focusable#~0.3.5",
+    "paper-ripple": "Polymer/paper-ripple#~0.3.5",
+    "font-roboto": "Polymer/font-roboto#master"
   },
-  "_source": "git://github.com/addyosmani/google-signin.git",
-  "_target": "~0.0.8",
-  "_originalSource": "google-signin"
+  "_release": "ddd8cd19d9",
+  "_resolution": {
+    "type": "branch",
+    "branch": "patch-1",
+    "commit": "ddd8cd19d9ecbfd38fbe2c26e4b864d63700039f"
+  },
+  "_source": "git://github.com/hjfreyer/google-signin.git",
+  "_target": "patch-1",
+  "_originalSource": "hjfreyer/google-signin"
 }

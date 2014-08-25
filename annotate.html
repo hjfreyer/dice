@@ -28,9 +28,7 @@
       <template>
         <link rel="stylesheet"
               href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
-        <x-header clientId="{{clientId}}" scopes="{{scopes}}"
-                  on-google-signin-success="{{signIn}}">
-        </x-header>
+        <x-header on-google-signin-success="{{signIn}}"></x-header>
         <div class="container"
              style="display: {{authorized ? 'block' : 'none'}}">
           <template if="{{error}}">

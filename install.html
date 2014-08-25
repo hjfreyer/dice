@@ -12,7 +12,6 @@
 
     <script src="bower_components/platform/platform.js"></script>
     <link rel="import" href="bower_components/polymer/polymer.html">
-    <link rel="import" href="globals.html">
     <link rel="import" href="header.html">
     <title>Dice Annotator</title>
 
@@ -20,9 +19,7 @@
       <template>
         <link rel="stylesheet"
               href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
-        <x-header clientId="{{clientId}}" scopes="{{scopes}}"
-                  on-google-signin-success="{{signIn}}">
-        </x-header>
+        <x-header on-google-signin-success="{{signIn}}"></x-header>
         <template if="{{authorized}}">
           <div class="container">
             <div class="jumbotron">
@@ -48,8 +45,6 @@
       <script>
         Polymer({
           authorized: false,
-          clientId: globals.CLIENT_ID,
-          scopes: globals.SCOPES.join(' '),
           signIn: function() { this.authorized = true; }
         });
       </script>

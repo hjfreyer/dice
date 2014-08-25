@@ -1,5 +1,6 @@
 <link rel="import" href="bower_components/google-signin/google-signin.html">
-<polymer-element name="x-header" attributes="clientId scopes" noscript>
+<link rel="import" href="globals.html">
+<polymer-element name="x-header">
   <template>
     <link rel="stylesheet"
           href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
@@ -13,4 +14,10 @@
       </div>
     </nav>
   </template>
+  <script>
+    Polymer({
+      clientId: globals.CLIENT_ID,
+      scopes: globals.SCOPES.join(' '),
+    });
+  </script>
 </polymer-element>

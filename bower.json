@@ -9,6 +9,7 @@
     "platform": "Polymer/platform#~0.3.5",
     "polymer": "Polymer/polymer#~0.3.5",
     "purl": "~2.3.1",
-    "google-signin": "~0.0.8"
+    "google-signin": "hjfreyer/google-signin#patch-1",
+    "core-elements": "Polymer/core-elements#~0.3.5"
   }
 }
