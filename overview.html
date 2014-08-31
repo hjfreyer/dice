@@ -10,72 +10,42 @@
       window.location.protocol = "https";
     </script>
 
+
     <script src="bower_components/platform/platform.js"></script>
+    <script src="bower_components/q/q.js"></script>
     <script type="text/javascript"
             src="https://apis.google.com/js/api.js"></script>
+    <script src="compile.js"></script>
+    <script src="assemble.js"></script>
     <link rel="import" href="bower_components/polymer/polymer.html">
     <link rel="import" href="bower_components/core-ajax/core-ajax.html">
     <link rel="import" href="bower_components/google-signin/google-signin.html">
     <link rel="import" href="dependencies.html">
     <link rel="import" href="header.html">
+    <link rel="import" href="bower_components/google-apis/google-apis.html">
     <title>Dice Annotator</title>
-
-    <polymer-element name="drive-rpc" attributes="path method response">
-      <template>
-        <google-signin-aware on-google-signin-aware-success="{{signIn}}"
-                             scopes="{{scopes}}">
-        </google-signin-aware>
-        <core-ajax id="ajax"
-                   url="https://www.googleapis.com/drive/v2{{path}}"
-                   method="{{method}}"
-                   params="{{ {access_token: authToken.access_token} }}"
-                   handleAs="json"
-                   response="{{response}}">
-        </core-ajax>
-      </template>
-      <script>
-        Polymer('drive-rpc', {
-          path: '',
-          method: 'GET',
-          scopes: globals.SCOPES.join(' '),
-          authToken: null,
-          signIn: function(e) {
-            this.authToken = e.detail.result;
-          },
-          go: function() {
-            this.$.ajax.go();
-          },
-        });
-      </script>
-    </polymer-element>
-
-    <polymer-element name="folder-overview" attributes="folderId">
-      <template>
-        <drive-rpc id="list" path="/files/{{folderId}}/children"
-                   on-google-signin-aware-success="{{onList}}"></drive-rpc>
-      </template>
-      <script src="overview.js"></script>
-    </polymer-element>
 
     <polymer-element name="x-overview">
       <template>
+        <google-api-loader id="driveApi" name="drive" version="v2"
+                           on-google-api-load="{{driveLoad}}">
+        </google-api-loader>
         <x-header></x-header>
         <google-signin-aware scopes="{{scopes}}"
                              on-google-signin-aware-success="{{signIn}}">
         </google-signin-aware>
 
-        <template if="{{pickerApi && authToken}}">
+        <template if="{{pickerApi && autoToken}}">
           <button on-click="{{pick}}">
             Pick
           </button>
-          <template if="{{folderId}}">
-
-            <folder-overview folderId="{{folderId}}"></folder-overview>
-          </template>
         </template>
       </template>
       <script src="overview.js"></script>
     </polymer-element>
+
+    <!-- <script type="text/javascript" src="https://apis.google.com/js/client.js"> -->
+    <!-- </script> -->
   </head>
   <body>
     <x-overview></x-overview>

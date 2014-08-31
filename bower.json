@@ -10,6 +10,7 @@
     "polymer": "Polymer/polymer#~0.3.5",
     "purl": "~2.3.1",
     "google-signin": "hjfreyer/google-signin#patch-1",
-    "core-elements": "Polymer/core-elements#~0.3.5"
+    "core-elements": "Polymer/core-elements#~0.3.5",
+    "q": "#1.0.1"
   }
 }
