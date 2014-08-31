@@ -60,7 +60,7 @@ Die.fromFile = (file) ->
 
 class Face
   constructor: (@grid, @pips, @description) ->
-    
+  
 
 Face.fromFile = (file) ->
   console.log(file.realtime)
