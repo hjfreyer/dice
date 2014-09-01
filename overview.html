@@ -39,6 +39,26 @@
             Pick
           </button>
         </template>
+
+        <template if="{{userSet}}">
+          <template repeat="{{user in userSet.users}}">
+            <h1>{{user.name}}</h1>
+            <template repeat="{{die in user.dice}}">
+              <h2>{{die.name}}</h2>
+              Die has {{die.faces.length}} faces.
+              <ul>
+                <template repeat="{{face in die.faces}}">
+                  <template if="{{face.pips}}">
+                    <li>Face has {{face.pips.length}} pips.</li>
+                  </template>
+                  <template if="{{!face.pips}}">
+                    <li>Face has no pips!</li>
+                  </template>
+                </template>
+              </ul>
+            </template>
+          </template>
+        </template>
       </template>
       <script src="overview-page.js"></script>
     </polymer-element>

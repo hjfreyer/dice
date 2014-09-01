@@ -102,7 +102,7 @@
       if (file.mimeType === 'image/jpeg') {
         return getImage(file);
       }
-      return new File(file, [], [], []);
+      return new File(file, null, [], []);
     });
   };
 
@@ -171,7 +171,7 @@
       _results = [];
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         f = _ref[_i];
-        if (f.isImage) {
+        if (f.isImage() && !f.isTrashed()) {
           _results.push(Face.fromFile(f));
         }
       }
@@ -191,8 +191,10 @@
   })();
 
   Face.fromFile = function(file) {
+    var root, _ref;
+    root = file.realtime.value;
     console.log(file.realtime);
-    return new Face();
+    return new Face(null, (_ref = root.pips) != null ? _ref.json : void 0, null);
   };
 
   window.getUserSet = function(drive, dirId) {

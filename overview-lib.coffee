@@ -37,7 +37,7 @@ getFile = (drive, id, maxDepth) ->
   .then (file) ->
     return getDir(file) if file.mimeType == DIR_MIME
     return getImage(file) if file.mimeType == 'image/jpeg'
-    return new File(file, [], [], [])
+    return new File(file, null, [], [])
 
 class UserSet
   constructor: (@users) ->
@@ -56,15 +56,15 @@ class Die
 
 Die.fromFile = (file) ->
   new Die(file.file.title,
-    (Face.fromFile(f) for f in file.contents when f.isImage))
+    (Face.fromFile(f) for f in file.contents when f.isImage() && !f.isTrashed()))
 
 class Face
   constructor: (@grid, @pips, @description) ->
-  
 
 Face.fromFile = (file) ->
+  root = file.realtime.value
   console.log(file.realtime)
-  new Face()
+  new Face(null, root.pips?.json, null)
 
 
 window.getUserSet = (drive, dirId) ->

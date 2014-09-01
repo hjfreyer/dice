@@ -38,6 +38,8 @@
 
       this.drive = null;
       this.auth = null;
+
+      this.userSet = null;
     },
     scopes: globals.SCOPES.join(' '),
     folderId: '0By0VXVqSXF5oRjFnRnlsNUZiQnM',  // TMP
@@ -79,9 +81,9 @@
       // var x = window.getFile(this.drive, '0By0VXVqSXF5oQ3lzVHhOZExra28', 1  ).then(function(x) {
       //   console.log(x)
       // }, function(x) {console.log(x);});
-      var x = window.getUserSet(this.drive, '0By0VXVqSXF5oRjFnRnlsNUZiQnM').then(function(x) {
-        console.log(x)
-      }, function(x) {console.log(x);});
+      window.getUserSet(this.drive, '0By0VXVqSXF5oRjFnRnlsNUZiQnM')
+        .then(function(userSet) { this.userSet = userSet; }.bind(this),
+        function(err) { console.log(err); });
 
       return
       var x = window.listDirRecFromId(this.drive, '0By0VXVqSXF5oRjFnRnlsNUZiQnM', 3).then(function(x) {
