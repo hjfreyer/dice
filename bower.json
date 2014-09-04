@@ -1,0 +1,10 @@
+{
+  "name": "dice",
+  "version": "0.0.0",
+  "homepage": "https://github.com/hjfreyer/dice",
+  "authors": [
+    "hjfreyer <yt@hjfreyer.com>"
+  ],
+  "license": "MIT",
+  "private": true
+}
