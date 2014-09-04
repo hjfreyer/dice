@@ -13,6 +13,7 @@ Polymer('annotator-page', {
     this.annotator = null;
   },
   ready: function() {
+    // TODO: Use the one in common.coffee.
     var url = purl();
     if (!url.param('state')) {
       this.error = 'Looks like you came here directly. You should ' +
