@@ -1,0 +1,108 @@
+<script type="text/javascript"
+        src="https://apis.google.com/js/api.js"></script>
+<link rel="import" href="/components/google-apis/google-apis.html">
+<link rel="import" href="/components/google-signin/google-signin.html">
+<script src="/components/q/q.js"></script>
+<polymer-element name="x-header">
+  <template>
+    <google-signin clientId="{{clientId}}" scopes="{{scopes}}"></google-signin>
+  </template>
+  <script src="/lib.js"></script>
+</polymer>
+
+<polymer-element name="x-body">
+  <template>
+    <x-header on-google-signin-success="{{authSuccess}}"></x-header>
+    <template if="{{authReady}}">
+      <main>
+        {{location.name}}
+        <template if="{{location.name == 'index'}}">
+          Index
+        </template>
+        <template if="{{location.name == 'overview'}}">
+          File: {{location.projectId}}
+          <x-overview fileId="{{location.projectId}}"></x-overview>
+        </template>
+        <template if="{{location.name == 'create'}}">
+          <x-create folderId="{{location.folderId}}"></x-create>
+        </template>
+        <template if="{{location.name == 'annotator'}}">
+          <x-annotator projectId="{{location.projectId}}"
+            photoId="{{location.photoId}}"></x-annotator>
+        </template>
+      </main>
+    </template>
+  </template>
+  <script src="/lib.js"></script>
+</polymer>
+
+<polymer-element name="docs-photo" attributes="fileId" noscript>
+  <template>
+    <img src="https://docs.google.com/uc?id={{fileId}}">
+  </template>
+</polymer>
+
+<polymer-element name="x-create" attributes="folderId">
+  <template>
+    <google-api-loader id="drive" name="drive" version="v2"
+      on-google-api-load="{{driveReady}}">
+    </google-api-loader>
+    <google-signin-aware on-google-signin-aware-success="{{authReady}}">
+    </google-signin-aware>
+  </template>
+  <script src="/lib.js"></script>
+</polymer>
+
+<polymer-element name="x-overview" attributes="fileId">
+  <template>
+    <google-signin-aware on-google-signin-aware-success="{{authReady}}">
+    </google-signin-aware>
+    <realtime-doc id="doc" fileId="{{fileId}}"
+      on-realtime-doc-loaded="{{loaded}}"></realtime-doc>
+    <template if="{{pickerApi &amp;&amp; authToken}}">
+      <button on-click="{{showPicker}}">Pick</button>
+    </template>
+    <h1>Unidentified photos</h1>
+    <ul>
+      <template repeat="{{photo in unlabeled}}">
+        <li><a href="#/p/{{fileId}}/a/{{photo[0]}}">{{photo[0]}}</a></li>
+      </template>
+    </ul>
+  </template>
+  <script src="/lib.js"></script>
+</polymer>
+
+<polymer-element name="x-annotator" attributes="projectId photoId">
+  <template>
+    <google-signin-aware on-google-signin-aware-success="{{authReady}}">
+    </google-signin-aware>
+    <a href="/#/p/{{projectId}}">Back</a>
+    <canvas id="canvas" width="{{width}}" height="{{height}}"></canvas>
+    <realtime-doc id="doc" fileId="{{projectId}}"
+      on-realtime-doc-loaded="{{loaded}}"></realtime-doc>
+    <label>Description</label>
+    <input value="{{description}}">
+    <!-- <google-signin-aware on-google-signin-aware-success="{{authReady}}">
+    </google-signin-aware>
+    <realtime-doc id="doc" fileId="{{fileId}}"
+      on-realtime-doc-loaded="{{loaded}}"></realtime-doc>
+    <template if="{{pickerApi &amp;&amp; authToken}}">
+      <button on-click="{{showPicker}}">Pick</button>
+    </template>
+    <h1>Unidentified photos</h1>
+    <ul>
+      <template repeat="{{photo in unlabeled}}">
+        <li><a href="#/p/{{fileId}}/a/{{photo[0]}}">{{photo[0]}}</a></li>
+      </template>
+    </ul> -->
+  </template>
+  <script src="/lib.js"></script>
+</polymer>
+
+<polymer-element name="realtime-doc" attributes="fileId">
+  <template>
+    <google-signin-aware on-google-signin-aware-success="{{authReady}}">
+    </google-signin-aware>
+  </template>
+  <script src="/lib.js"></script>
+</polymer>
