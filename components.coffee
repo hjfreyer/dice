@@ -12,37 +12,6 @@ exec = (request) ->
   request.execute (jsonResp, rawResp) -> deferred.resolve(jsonResp)
   return deferred.promise
 
-class SyncedValueGroup
-  constructor: () ->
-    @members_ = {}
-    @count_ = 0
-    @value_ = {}
-
-  add: () ->
-    val = new Alerter(this, @count_)
-    @members_[@count_] = val
-    @count_++
-    return val
-
-  alertAllBut_: (id) ->
-    for id2, member of @members_
-      if id != id2 && member.listener_
-        member.listener_()
-
-class Alerter
-  constructor: (@group_, @id_) ->
-    @listener_ = null
-    Object.defineProperty(this, 'value', {
-      get: () => @group_.value_
-      set: (x) => @group_.value_ = x
-    })
-
-  listen: (cb) ->
-    @listener_ = cb
-
-  alert: () ->
-    @group_.alertAllBut_(@id_)
-
 Polymer('x-header', {
   clientId: globals.CLIENT_ID
   scopes: globals.SCOPES.join(' ')
@@ -124,86 +93,118 @@ Polymer('x-create', {
       location.hash = '#/p/' + file.id
 })
 
-syncGroupFromPhoto =  (photo) ->
-  g = new SyncedValueGroup()
-  m = g.add()
-  m.value = photo.get('annotations')
-  m.listen(() -> photo.set('annotations', m.value))
-  photo.addEventListener(
-    gapi.drive.realtime.EventType.VALUE_CHANGED,
-    (e) ->
-      return if e.isLocal || e.property != 'annotations'
-      m.value = e.newValue
-      m.alert()
-  )
-  return g
+groupBy: (property, records) ->
+  results = {}
+  for r in records
+    results[r[property]] ?= []
+    results[r[property]].push(r)
+  return results
 
-class ModelWrapper
-  constructor: (@model) ->
-    @syncGroups = {}
-    photos = @model.getRoot().get('photos')
-    for item in photos.items()
-      console.log(item[0])
-      console.log(item[1].get('annotations'))
-      @syncGroups[item[0]] = syncGroupFromPhoto(item[1])
-    photos.addEventListener(
+class Photo
+  constructor: (@id, @annotations) ->
+
+  isLabeled: () -> @annotations.user && @annotations.name
+
+  isAnnotated: () ->
+    @isLabeled() && @annotations.grid && @annotations.pips
+
+# Overview.build = (root) ->
+#   unlabeled = []
+#   users = []
+#
+#   userMap = {}
+#   photos = root.get('photos')
+#   for item in photos.items()
+#     id = item[0]
+#     annotations = item[1].get('annotations')
+#     if !annotations.user || !annotations.name
+#       unlabeled.push([id, annotations])
+#     else
+#       userMap[annotations.user] ?= {}
+#       userMap[annotations.user][annotations.name] ?= []
+#       userMap[annotations.user][annotations.name].push(
+#         new Photo(id, annotations))
+#   for user, names of userMap
+#     dice = []
+#     for name, photos of names
+#       dice.push(new Die(name, photos))
+#     users.push(new User(user, dice))
+#
+#   return new Overview(unlabeled, users)
+
+Polymer('x-project', {
+  docReady: () ->
+    @doc = @$.doc.doc
+})
+
+Polymer('photo-model', {
+  created: () ->
+    @doc = null
+    @photoId = null
+    @annotations = null
+
+  observe:
+    'annotations': 'pushAnnotations'
+    'annotations.user': 'pushAnnotations'
+    'annotations.name': 'pushAnnotations'
+    'annotations.description': 'pushAnnotations'
+    'annotations.grid': 'pushAnnotations'
+    'annotations.pips': 'pushAnnotations'
+
+  docChanged: () ->
+    photo = @getPhoto()
+    return if !photo
+    photo.addEventListener(
       gapi.drive.realtime.EventType.VALUE_CHANGED,
       (e) =>
-        return if @syncGroups[e.property]
-        @syncGroups[e.property] = syncGroupFromPhoto(e.newValue)
+        return if e.isLocal || e.property != 'annotations'
+        @annotations = e.newValue
     )
+    @annotations = @getPhoto()?.get('annotations')
 
-  getPhotoIds: () ->
-    photos = @model.getRoot().get('photos')
-    return [] if !photos
-    return photos.keys()
+  pushAnnotations: (oldValue, newValue) ->
+    photo = @getPhoto()
+    return if !photo
+    remote = photo.get('annotations')
+    return if JSON.stringify(newValue) == JSON.stringify(remote)
+    @getPhoto()?.set('annotations', @annotations)
 
-  addPhoto: (fileId) ->
-    photos = @model.getRoot().get('photos')
-    if !photos
-      photos = @model.createMap()
-      @model.getRoot().set('photos', photos)
-    photo = photos.get(fileId)
-    if !photo
-      photo = @model.createMap()
-      photo.set('annotations', {})
-      photos.set(fileId, photo)
+  getPhoto: () ->
+    @doc?.getModel().getRoot().get('photos')?.get(@photoId)
+})
 
-  getAnnotations: (fileId) ->
-    console.log(@syncGroups)
-    return @syncGroups[fileId].add()
-
-class ModelSnapshot
-  constructor: (@photos) ->
-
+initDoc = (doc) ->
+  return if !doc
+  if !doc.getModel().getRoot().get('photos')
+    photos = doc.getModel().createMap()
+    doc.getModel().getRoot().set('photos', photos)
 
 Polymer('x-overview', {
   created: () ->
-    @fileId = ''
-    @model = null
-    @authToken = null
+    @fileId = null
+    @doc = null
     @pickerApi = false
     gapi.load('picker', () => @pickerReady())
 
-    @unlabeled = []
+    @overview = null
 
-  loaded: () ->
-    @doc = @$.doc.doc
-    @model = new ModelWrapper(@doc.getModel())
+  docChanged: () ->
+    initDoc(@doc)
+    @doc.getModel().getRoot().get('photos').addEventListener(
+      gapi.drive.realtime.EventType.VALUE_CHANGED,
+      () => @update()
+    )
     @update()
 
   pickerReady: () ->
     @pickerApi = true
-
-  authReady: (e) ->
-    @authToken = e.detail.result.access_token
 
   showPicker: () ->
     view = new google.picker.DocsView()
     view.setIncludeFolders(true)
     view.setMimeTypes('image/jpeg,image/png')
     picker = new google.picker.PickerBuilder()
-      .setOAuthToken(@authToken)
+      .setOAuthToken(gapi.auth.getToken().access_token)
       .setDeveloperKey(globals.API_KEY)
       .setCallback((o) => @pickerCb(o))
       .addView(view)
@@ -214,51 +215,51 @@ Polymer('x-overview', {
 
   pickerCb: (o) ->
     return if o.action != 'picked'
+    model = @doc.getModel()
 
     for doc in o.docs
-      @model.addPhoto(doc.id)
+      photos = model.getRoot().get('photos')
+      if !photos
+        photos = model.createMap()
+        model.getRoot().set('photos', photos)
+      photo = photos.get(doc.id)
+      if !photo
+        photo = model.createMap()
+        photo.set('annotations', {})
+        photos.set(doc.id, photo)
 
   update: () ->
-    @unlabeled = []
-    for id in @model.getPhotoIds()
-      if !photo.annotations.user || !photo.annotations.user
-        @unlabeled.push([id, photo])
+    photos = @getPhotos()
+    return if !photos
+    unlabeled = (p for p in photos when !p.isLabeled())
+    @overview =
+      unlabeled: unlabeled
+
+  getPhotos: () ->
+    photos = @doc?.getModel().getRoot().get('photos')
+    return if !photos
+    return (new Photo(item[0],
+      item[1].get('annotations')) for item in photos.items())
 })
 
 Polymer('x-annotator', {
   created: () ->
     @width = 600
     @height = 600
-    @description = ''
-
-  descriptionChanged: (oldValue, newValue) ->
-    @annotations.value.description = newValue
-    @annotations.alert()
+    @image = new Image()
 
   ready: () ->
-    @doc = getDoc(@projectId)
-    Q.all([@getImage(), @doc]).then((deps) =>
-      @image = deps[0]
-      @doc = deps[1]
-      @model = new ModelWrapper(@doc.getModel())
-      @annotations = @model.getAnnotations(@photoId)
-      @annotations.listen(() =>
-        @description = @annotations.value.description
-      )
+    @annotator = new Annotator(@$.canvas)
+    @image.onload = () => @annotator.setImage(@image)
+    @image.src = "https://docs.google.com/uc?id=" + @photoId
 
+  annotationsChanged: () ->
+    @annotator.setAnnotations(@annotations)
 
-      @annotator = new Annotator(
-        @$.canvas,
-        @image,
-        @model.getAnnotations(@photoId))
-    ).done()
-
-  getImage: () ->
-    deferred = Q.defer()
-    image = new Image()
-    image.onload = () -> deferred.resolve(image)
-    image.src = "https://docs.google.com/uc?id=" + @photoId
-    return deferred.promise
+  resetAnno: () ->
+    @annotations.grid = null
+    @annotations.pips = null
+    @annotator.setAnnotations(@annotations)
 })
 
 realtimePromise = null
