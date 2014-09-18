@@ -71,5 +71,6 @@ module.exports = function(grunt) {
 
   grunt.registerTask('dev', ['clean', 'copy',
     'coffee', 'http-server', 'watch']);
-
+  grunt.registerTask('prod', ['clean', 'copy', 'coffee']);
+  grunt.registerTask('deploy', ['buildcontrol:deploy']);
 };
