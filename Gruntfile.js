@@ -31,6 +31,21 @@ module.exports = function(grunt) {
         }
       }
     },
+
+    buildcontrol: {
+      options: {
+        dir: 'bin',
+        commit: true,
+        push: true,
+        message: 'Built %sourceName% from commit %sourceCommit% on branch %sourceBranch%'
+      },
+      deploy: {
+        options: {
+          remote: 'git@github.com:hjfreyer/dice.git',
+          branch: 'gh-pages'
+        }
+      }
+    },
     'http-server': {
       'dev': {
         // the server root directory
@@ -48,12 +63,13 @@ module.exports = function(grunt) {
     }
   });
 
-  grunt.loadNpmTasks('grunt-contrib-copy');
-  grunt.loadNpmTasks('grunt-contrib-clean');
   grunt.loadNpmTasks('grunt-bower-task');
-  grunt.loadNpmTasks('grunt-http-server');
-  grunt.loadNpmTasks('grunt-contrib-watch');
+  grunt.loadNpmTasks('grunt-build-control');
+  grunt.loadNpmTasks('grunt-contrib-clean');
   grunt.loadNpmTasks('grunt-contrib-coffee');
+  grunt.loadNpmTasks('grunt-contrib-copy');
+  grunt.loadNpmTasks('grunt-contrib-watch');
+  grunt.loadNpmTasks('grunt-http-server');
 
   grunt.registerTask('dev', ['clean', 'copy',
     'coffee', 'http-server', 'watch']);
