@@ -1,23 +1,23 @@
 module.exports = function(grunt) {
 
   grunt.initConfig({
-    clean: ['bin/'],
+    clean: ['dist/'],
     copy: {
       srcs: {
         src: ['*.html'],
-        dest: 'bin/'
+        dest: 'dist/'
       },
       bower: {
         files: [{
           expand: true,
           cwd: 'bower_components/',
           src: ['**'],
-          dest: 'bin/components/'
+          dest: 'dist/components/'
         }]
       },
       cname: {
         files: {
-          'bin/CNAME': 'CNAME'
+          'dist/CNAME': 'CNAME'
         }
       }
     },
@@ -25,14 +25,14 @@ module.exports = function(grunt) {
     coffee: {
       main: {
         files: {
-          'bin/lib.js': '*.coffee'
+          'dist/lib.js': '*.coffee'
         }
       }
     },
 
     buildcontrol: {
       options: {
-        dir: 'bin',
+        dir: 'dist',
         commit: true,
         push: true,
         message: 'Built %sourceName% from commit %sourceCommit% on branch %sourceBranch%'
@@ -47,7 +47,7 @@ module.exports = function(grunt) {
     'http-server': {
       'dev': {
         // the server root directory
-        root: 'bin/',
+        root: 'dist/',
 
         port: 8000,
         host: "127.0.0.1",
