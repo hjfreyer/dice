@@ -1,0 +1,15 @@
+<html>
+  <head>
+    <script src="/components/purl/purl.js"></script>
+    <script>
+      var url = purl();
+      var state = JSON.parse(url.param('state'));
+      console.log(state);
+      if (state.action == 'create') {
+        location.href = '/#/create/' + state.folderId;
+      } else if (state.action == 'open') {
+        location.href = '/#/p/' + state.ids[0];
+      }
+    </script>
+  </head>
+</html>
