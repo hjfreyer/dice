@@ -14,16 +14,14 @@ module.exports = function(grunt) {
           src: ['**'],
           dest: 'bin/components/'
         }]
+      },
+      cname: {
+        files: {
+          'bin/CNAME': 'CNAME'
+        }
       }
     },
-    // bower: {
-    //   options: {
-    //     targetDir: 'bin/components',
-    //     install: false,
-    //     layout: 'byComponent'
-    //   },
-    //   main: {}
-    // },
+
     coffee: {
       main: {
         files: {
