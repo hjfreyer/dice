@@ -36,6 +36,10 @@ Polymer('x-body', {
         @location =
           name: 'overview'
           projectId: projectId
+      '/p/:projectId/upload': (projectId) =>
+        @location =
+          name: 'upload'
+          projectId: projectId
       '/p/:projectId/a/:photoId': (projectId, photoId) =>
         @location =
           name: 'annotator'
@@ -179,13 +183,20 @@ initDoc = (doc) ->
     photos = doc.getModel().createMap()
     doc.getModel().getRoot().set('photos', photos)
 
+initPhoto = (doc, photoId, defaultAnno) ->
+  photos = doc.getModel().getRoot().get('photos')
+  photo = photos.get(photoId)
+  if !photo
+    photo = doc.getModel().createMap()
+    photos.set(photoId, photo)
+  anno = photo.get('annotations')
+  if !anno
+    photo.set('annotations', defaultAnno)
+
 Polymer('x-overview', {
   created: () ->
     @fileId = null
     @doc = null
-    @pickerApi = false
-    gapi.load('picker', () => @pickerReady())
-
     @overview = null
 
   docChanged: () ->
@@ -195,6 +206,28 @@ Polymer('x-overview', {
       () => @update()
     )
     @update()
+
+  update: () ->
+    photos = @getPhotos()
+    return if !photos
+    unlabeled = (p for p in photos when !p.isAnnotated())
+    @overview =
+      all: photos
+      unlabeled: unlabeled
+
+  getPhotos: () ->
+    photos = @doc?.getModel().getRoot().get('photos')
+    return if !photos
+    return (new Photo(item[0],
+      item[1].get('annotations')) for item in photos.items())
+})
+
+Polymer('x-upload', {
+  created: () ->
+    @projectId = null
+    @doc = null
+    @pickerApi = false
+    gapi.load('picker', () => @pickerReady())
 
   pickerReady: () ->
     @pickerApi = true
@@ -214,19 +247,14 @@ Polymer('x-overview', {
     picker.setVisible(true)
 
   pickerCb: (o) ->
+    console.log o
     return if o.action != 'picked'
     model = @doc.getModel()
 
     for doc in o.docs
-      photos = model.getRoot().get('photos')
-      if !photos
-        photos = model.createMap()
-        model.getRoot().set('photos', photos)
-      photo = photos.get(doc.id)
-      if !photo
-        photo = model.createMap()
-        photo.set('annotations', {})
-        photos.set(doc.id, photo)
+      initPhoto(@doc, doc.id, {user: @user, name: @name})
+
+    location.hash = '/#/p/' + @projectId
 
   update: () ->
     photos = @getPhotos()
@@ -234,12 +262,6 @@ Polymer('x-overview', {
     unlabeled = (p for p in photos when !p.isLabeled())
     @overview =
       unlabeled: unlabeled
-
-  getPhotos: () ->
-    photos = @doc?.getModel().getRoot().get('photos')
-    return if !photos
-    return (new Photo(item[0],
-      item[1].get('annotations')) for item in photos.items())
 })
 
 Polymer('x-annotator', {
@@ -260,6 +282,9 @@ Polymer('x-annotator', {
     @annotations.grid = null
     @annotations.pips = null
     @annotator.setAnnotations(@annotations)
+
+  deletePhoto: () ->
+
 })
 
 realtimePromise = null
@@ -289,8 +314,8 @@ Polymer('realtime-doc', {
   authReady: () ->
     getDoc(@fileId).then((doc) => @onFileLoaded(doc)).done()
 
-  onFileLoaded: (doc) ->
-    @doc = doc
+  onFileLoaded: (@doc) ->
+    initDoc(@doc)
     @fire('realtime-doc-loaded')
 })
 
