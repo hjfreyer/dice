@@ -1,5 +1,5 @@
 (function() {
-  var Photo, docPromises, exec, getDoc, getRealtime, globals, initDoc, realtimePromise;
+  var Photo, docPromises, exec, getDoc, getRealtime, globals, initDoc, initPhoto, realtimePromise;
 
   globals = {
     CLIENT_ID: '895593330219-dagqsd3t6aqm8qtvp9t02mkd4aafnkbi.apps.' + 'googleusercontent.com',
@@ -48,6 +48,14 @@
           return function(projectId) {
             return _this.location = {
               name: 'overview',
+              projectId: projectId
+            };
+          };
+        })(this),
+        '/p/:projectId/upload': (function(_this) {
+          return function(projectId) {
+            return _this.location = {
+              name: 'upload',
               projectId: projectId
             };
           };
@@ -217,16 +225,24 @@
     }
   };
 
+  initPhoto = function(doc, photoId, defaultAnno) {
+    var anno, photo, photos;
+    photos = doc.getModel().getRoot().get('photos');
+    photo = photos.get(photoId);
+    if (!photo) {
+      photo = doc.getModel().createMap();
+      photos.set(photoId, photo);
+    }
+    anno = photo.get('annotations');
+    if (!anno) {
+      return photo.set('annotations', defaultAnno);
+    }
+  };
+
   Polymer('x-overview', {
     created: function() {
       this.fileId = null;
       this.doc = null;
-      this.pickerApi = false;
-      gapi.load('picker', (function(_this) {
-        return function() {
-          return _this.pickerReady();
-        };
-      })(this));
       return this.overview = null;
     },
     docChanged: function() {
@@ -237,6 +253,58 @@
         };
       })(this));
       return this.update();
+    },
+    update: function() {
+      var p, photos, unlabeled;
+      photos = this.getPhotos();
+      if (!photos) {
+        return;
+      }
+      unlabeled = (function() {
+        var _i, _len, _results;
+        _results = [];
+        for (_i = 0, _len = photos.length; _i < _len; _i++) {
+          p = photos[_i];
+          if (!p.isAnnotated()) {
+            _results.push(p);
+          }
+        }
+        return _results;
+      })();
+      return this.overview = {
+        all: photos,
+        unlabeled: unlabeled
+      };
+    },
+    getPhotos: function() {
+      var item, photos, _ref;
+      photos = (_ref = this.doc) != null ? _ref.getModel().getRoot().get('photos') : void 0;
+      if (!photos) {
+        return;
+      }
+      return (function() {
+        var _i, _len, _ref1, _results;
+        _ref1 = photos.items();
+        _results = [];
+        for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
+          item = _ref1[_i];
+          _results.push(new Photo(item[0], item[1].get('annotations')));
+        }
+        return _results;
+      })();
+    }
+  });
+
+  Polymer('x-upload', {
+    created: function() {
+      this.projectId = null;
+      this.doc = null;
+      this.pickerApi = false;
+      return gapi.load('picker', (function(_this) {
+        return function() {
+          return _this.pickerReady();
+        };
+      })(this));
     },
     pickerReady: function() {
       return this.pickerApi = true;
@@ -254,30 +322,21 @@
       return picker.setVisible(true);
     },
     pickerCb: function(o) {
-      var doc, model, photo, photos, _i, _len, _ref, _results;
+      var doc, model, _i, _len, _ref;
+      console.log(o);
       if (o.action !== 'picked') {
         return;
       }
       model = this.doc.getModel();
       _ref = o.docs;
-      _results = [];
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         doc = _ref[_i];
-        photos = model.getRoot().get('photos');
-        if (!photos) {
-          photos = model.createMap();
-          model.getRoot().set('photos', photos);
-        }
-        photo = photos.get(doc.id);
-        if (!photo) {
-          photo = model.createMap();
-          photo.set('annotations', {});
-          _results.push(photos.set(doc.id, photo));
-        } else {
-          _results.push(void 0);
-        }
+        initPhoto(this.doc, doc.id, {
+          user: this.user,
+          name: this.name
+        });
       }
-      return _results;
+      return location.hash = '/#/p/' + this.projectId;
     },
     update: function() {
       var p, photos, unlabeled;
@@ -299,23 +358,6 @@
       return this.overview = {
         unlabeled: unlabeled
       };
-    },
-    getPhotos: function() {
-      var item, photos, _ref;
-      photos = (_ref = this.doc) != null ? _ref.getModel().getRoot().get('photos') : void 0;
-      if (!photos) {
-        return;
-      }
-      return (function() {
-        var _i, _len, _ref1, _results;
-        _ref1 = photos.items();
-        _results = [];
-        for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
-          item = _ref1[_i];
-          _results.push(new Photo(item[0], item[1].get('annotations')));
-        }
-        return _results;
-      })();
     }
   });
 
@@ -341,7 +383,8 @@
       this.annotations.grid = null;
       this.annotations.pips = null;
       return this.annotator.setAnnotations(this.annotations);
-    }
+    },
+    deletePhoto: function() {}
   });
 
   realtimePromise = null;
@@ -389,6 +432,7 @@
     },
     onFileLoaded: function(doc) {
       this.doc = doc;
+      initDoc(this.doc);
       return this.fire('realtime-doc-loaded');
     }
   });
