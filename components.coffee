@@ -112,6 +112,13 @@ class Photo
   isAnnotated: () ->
     @isLabeled() && @annotations.grid && @annotations.pips
 
+class User
+  constructor: (@id, @data) ->
+
+  isComplete: () ->
+    @data.sex && @data.name && @data.group
+
+
 # Overview.build = (root) ->
 #   unlabeled = []
 #   users = []
@@ -167,6 +174,7 @@ Polymer('photo-model', {
     @annotations = @getPhoto()?.get('annotations')
 
   pushAnnotations: (oldValue, newValue) ->
+    @fire('changed')
     photo = @getPhoto()
     return if !photo
     remote = photo.get('annotations')
@@ -177,11 +185,51 @@ Polymer('photo-model', {
     @doc?.getModel().getRoot().get('photos')?.get(@photoId)
 })
 
+Polymer('user-model', {
+  created: () ->
+    @doc = null
+    @userId = null
+    @data = null
+
+  observe:
+    'data': 'pushData'
+    'data.name': 'pushData'
+    'data.sex': 'pushData'
+    'data.group': 'pushData'
+
+  docChanged: () ->
+    user = @getUser()
+    if !user
+      initUser(@doc, @userId, {})
+      user = @getUser()
+    user.addEventListener(
+      gapi.drive.realtime.EventType.VALUE_CHANGED,
+      (e) =>
+        return if e.isLocal || e.property != 'data'
+        @data = e.newValue
+    )
+    @data = user.get('data')
+
+  pushData: (oldValue, newValue) ->
+    @fire('changed')
+    user = @getUser()
+    return if !user
+    remote = user.get('data')
+    return if JSON.stringify(newValue) == JSON.stringify(remote)
+    user.set('data', @data)
+
+  getUser: () ->
+    @doc?.getModel().getRoot().get('users').get(@userId)
+})
+
 initDoc = (doc) ->
   return if !doc
   if !doc.getModel().getRoot().get('photos')
     photos = doc.getModel().createMap()
     doc.getModel().getRoot().set('photos', photos)
+  if !doc.getModel().getRoot().get('users')
+    users = doc.getModel().createMap()
+    doc.getModel().getRoot().set('users', users)
 
 initPhoto = (doc, photoId, defaultAnno) ->
   photos = doc.getModel().getRoot().get('photos')
@@ -193,15 +241,29 @@ initPhoto = (doc, photoId, defaultAnno) ->
   if !anno
     photo.set('annotations', defaultAnno)
 
+initUser = (doc, userId, defaultData) ->
+  users = doc.getModel().getRoot().get('users')
+  user = users.get(userId)
+  if !user
+    user = doc.getModel().createMap()
+    users.set(userId, user)
+  data = user.get('data')
+  if !data
+    user.set('data', defaultData)
+
 Polymer('x-overview', {
   created: () ->
     @fileId = null
     @doc = null
-    @overview = null
+    @unlabeled = null
+    @users = null
 
   docChanged: () ->
-    initDoc(@doc)
     @doc.getModel().getRoot().get('photos').addEventListener(
+      gapi.drive.realtime.EventType.VALUE_CHANGED,
+      () => @update()
+    )
+    @doc.getModel().getRoot().get('users').addEventListener(
       gapi.drive.realtime.EventType.VALUE_CHANGED,
       () => @update()
     )
@@ -210,10 +272,12 @@ Polymer('x-overview', {
   update: () ->
     photos = @getPhotos()
     return if !photos
-    unlabeled = (p for p in photos when !p.isAnnotated())
-    @overview =
-      all: photos
-      unlabeled: unlabeled
+    userIds = {}
+    for p in photos
+      if p.annotations.user
+        userIds[p.annotations.user] = true
+    @userIds = (id for id of userIds)
+    @unlabeled = (p for p in photos when !p.isAnnotated())
 
   getPhotos: () ->
     photos = @doc?.getModel().getRoot().get('photos')
@@ -287,6 +351,11 @@ Polymer('x-annotator', {
 
 })
 
+Polymer('user-editor', {
+  update: () ->
+    @isComplete = @data.name && @data.sex && @data.group
+})
+
 realtimePromise = null
 getRealtime = () ->
   if !realtimePromise
@@ -316,31 +385,5 @@ Polymer('realtime-doc', {
 
   onFileLoaded: (@doc) ->
     initDoc(@doc)
-    @fire('realtime-doc-loaded')
-})
-
-Polymer('x-picker', {
-  created: () ->
-    @authToken = null
-    @apiReady = null
-    @picker = null
-
-  ready: () ->
-    gapi.load('picker', () => @apiReady())
-
-  apiReady: () ->
-    @apiReady = true
-    @tryLoad()
-
-  authReady: () ->
-    @auth = true
-    @tryLoad()
-
-  tryLoad: () ->
-    return if !@auth or !@api
-    gapi.drive.realtime.load(@fileId, (doc) => @onFileLoaded(doc))
-
-  onFileLoaded: (doc) ->
-    @doc = doc
     @fire('realtime-doc-loaded')
 })
