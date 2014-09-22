@@ -1,5 +1,5 @@
 (function() {
-  var Photo, docPromises, exec, getDoc, getRealtime, globals, initDoc, initPhoto, realtimePromise;
+  var Photo, User, docPromises, exec, getDoc, getRealtime, globals, initDoc, initPhoto, initUser, realtimePromise;
 
   globals = {
     CLIENT_ID: '895593330219-dagqsd3t6aqm8qtvp9t02mkd4aafnkbi.apps.' + 'googleusercontent.com',
@@ -160,6 +160,20 @@
 
   })();
 
+  User = (function() {
+    function User(id, data) {
+      this.id = id;
+      this.data = data;
+    }
+
+    User.prototype.isComplete = function() {
+      return this.data.sex && this.data.name && this.data.group;
+    };
+
+    return User;
+
+  })();
+
   Polymer('x-project', {
     docReady: function() {
       return this.doc = this.$.doc.doc;
@@ -198,6 +212,7 @@
     },
     pushAnnotations: function(oldValue, newValue) {
       var photo, remote, _ref;
+      this.fire('changed');
       photo = this.getPhoto();
       if (!photo) {
         return;
@@ -214,14 +229,66 @@
     }
   });
 
+  Polymer('user-model', {
+    created: function() {
+      this.doc = null;
+      this.userId = null;
+      return this.data = null;
+    },
+    observe: {
+      'data': 'pushData',
+      'data.name': 'pushData',
+      'data.sex': 'pushData',
+      'data.group': 'pushData'
+    },
+    docChanged: function() {
+      var user;
+      user = this.getUser();
+      if (!user) {
+        initUser(this.doc, this.userId, {});
+        user = this.getUser();
+      }
+      user.addEventListener(gapi.drive.realtime.EventType.VALUE_CHANGED, (function(_this) {
+        return function(e) {
+          if (e.isLocal || e.property !== 'data') {
+            return;
+          }
+          return _this.data = e.newValue;
+        };
+      })(this));
+      return this.data = user.get('data');
+    },
+    pushData: function(oldValue, newValue) {
+      var remote, user;
+      this.fire('changed');
+      user = this.getUser();
+      if (!user) {
+        return;
+      }
+      remote = user.get('data');
+      if (JSON.stringify(newValue) === JSON.stringify(remote)) {
+        return;
+      }
+      return user.set('data', this.data);
+    },
+    getUser: function() {
+      var _ref;
+      return (_ref = this.doc) != null ? _ref.getModel().getRoot().get('users').get(this.userId) : void 0;
+    }
+  });
+
   initDoc = function(doc) {
-    var photos;
+    var photos, users;
     if (!doc) {
       return;
     }
     if (!doc.getModel().getRoot().get('photos')) {
       photos = doc.getModel().createMap();
-      return doc.getModel().getRoot().set('photos', photos);
+      doc.getModel().getRoot().set('photos', photos);
+    }
+    if (!doc.getModel().getRoot().get('users')) {
+      users = doc.getModel().createMap();
+      return doc.getModel().getRoot().set('users', users);
     }
   };
 
@@ -239,15 +306,35 @@
     }
   };
 
+  initUser = function(doc, userId, defaultData) {
+    var data, user, users;
+    users = doc.getModel().getRoot().get('users');
+    user = users.get(userId);
+    if (!user) {
+      user = doc.getModel().createMap();
+      users.set(userId, user);
+    }
+    data = user.get('data');
+    if (!data) {
+      return user.set('data', defaultData);
+    }
+  };
+
   Polymer('x-overview', {
     created: function() {
       this.fileId = null;
       this.doc = null;
-      return this.overview = null;
+      this.unlabeled = null;
+      this.problems = null;
+      return this.users = null;
     },
     docChanged: function() {
-      initDoc(this.doc);
       this.doc.getModel().getRoot().get('photos').addEventListener(gapi.drive.realtime.EventType.VALUE_CHANGED, (function(_this) {
+        return function() {
+          return _this.update();
+        };
+      })(this));
+      this.doc.getModel().getRoot().get('users').addEventListener(gapi.drive.realtime.EventType.VALUE_CHANGED, (function(_this) {
         return function() {
           return _this.update();
         };
@@ -255,26 +342,76 @@
       return this.update();
     },
     update: function() {
-      var p, photos, unlabeled;
+      var c, covered, dieToPhotos, id, key, p, photos, userIds, _i, _j, _k, _len, _len1, _ref, _results;
       photos = this.getPhotos();
       if (!photos) {
         return;
       }
-      unlabeled = (function() {
-        var _i, _len, _results;
+      userIds = {};
+      for (_i = 0, _len = photos.length; _i < _len; _i++) {
+        p = photos[_i];
+        if (p.annotations.user) {
+          userIds[p.annotations.user] = true;
+        }
+      }
+      this.userIds = (function() {
+        var _results;
         _results = [];
-        for (_i = 0, _len = photos.length; _i < _len; _i++) {
-          p = photos[_i];
-          if (!p.isAnnotated()) {
-            _results.push(p);
-          }
+        for (id in userIds) {
+          _results.push(id);
         }
         return _results;
       })();
-      return this.overview = {
-        all: photos,
-        unlabeled: unlabeled
-      };
+      this.unlabeled = [];
+      this.badPips = [];
+      dieToPhotos = {};
+      while (photos.length !== 0) {
+        p = photos.pop();
+        if (!p.isAnnotated()) {
+          this.unlabeled.push(p);
+          continue;
+        }
+        if (!((2 < (_ref = p.annotations.pips.length) && _ref <= 6))) {
+          this.badPips.push(p);
+          continue;
+        }
+        key = p.annotations.user + ',' + p.annotations.name;
+        if (dieToPhotos[key] == null) {
+          dieToPhotos[key] = [];
+        }
+        dieToPhotos[key].push(p);
+      }
+      this.dieProblems = [];
+      _results = [];
+      for (key in dieToPhotos) {
+        photos = dieToPhotos[key];
+        covered = {};
+        for (c = _j = 3; _j <= 6; c = ++_j) {
+          covered[c] = [];
+        }
+        for (_k = 0, _len1 = photos.length; _k < _len1; _k++) {
+          p = photos[_k];
+          covered[p.annotations.pips.length].push(p);
+        }
+        _results.push((function() {
+          var _l, _results1;
+          _results1 = [];
+          for (c = _l = 3; _l <= 6; c = ++_l) {
+            if (covered[c].length !== 1) {
+              _results1.push(this.dieProblems.push({
+                user: photos[0].annotations.user,
+                name: photos[0].annotations.name,
+                side: c,
+                photos: covered[c]
+              }));
+            } else {
+              _results1.push(void 0);
+            }
+          }
+          return _results1;
+        }).call(this));
+      }
+      return _results;
     },
     getPhotos: function() {
       var item, photos, _ref;
@@ -336,7 +473,7 @@
           name: this.name
         });
       }
-      return location.hash = '/#/p/' + this.projectId;
+      return location.hash = '#/p/' + this.projectId;
     },
     update: function() {
       var p, photos, unlabeled;
@@ -384,7 +521,16 @@
       this.annotations.pips = null;
       return this.annotator.setAnnotations(this.annotations);
     },
-    deletePhoto: function() {}
+    deletePhoto: function() {
+      this.doc.getModel().getRoot().get('photos')["delete"](this.photoId);
+      return location.hash = '#/p/' + this.projectId;
+    }
+  });
+
+  Polymer('user-editor', {
+    update: function() {
+      return this.isComplete = this.data.name && this.data.sex && this.data.group;
+    }
   });
 
   realtimePromise = null;
@@ -433,43 +579,6 @@
     onFileLoaded: function(doc) {
       this.doc = doc;
       initDoc(this.doc);
-      return this.fire('realtime-doc-loaded');
-    }
-  });
-
-  Polymer('x-picker', {
-    created: function() {
-      this.authToken = null;
-      this.apiReady = null;
-      return this.picker = null;
-    },
-    ready: function() {
-      return gapi.load('picker', (function(_this) {
-        return function() {
-          return _this.apiReady();
-        };
-      })(this));
-    },
-    apiReady: function() {
-      this.apiReady = true;
-      return this.tryLoad();
-    },
-    authReady: function() {
-      this.auth = true;
-      return this.tryLoad();
-    },
-    tryLoad: function() {
-      if (!this.auth || !this.api) {
-        return;
-      }
-      return gapi.drive.realtime.load(this.fileId, (function(_this) {
-        return function(doc) {
-          return _this.onFileLoaded(doc);
-        };
-      })(this));
-    },
-    onFileLoaded: function(doc) {
-      this.doc = doc;
       return this.fire('realtime-doc-loaded');
     }
   });

@@ -17,7 +17,7 @@
     </nav>
   </template>
   <script src="/lib.js"></script>
-</polymer>
+</polymer-element>
 
 <polymer-element name="x-body">
   <template>
@@ -44,7 +44,7 @@
     </template>
   </template>
   <script src="/lib.js"></script>
-</polymer>
+</polymer-element>
 
 <polymer-element name="x-create" attributes="folderId">
   <template>
@@ -55,7 +55,7 @@
     </google-signin-aware>
   </template>
   <script src="/lib.js"></script>
-</polymer>
+</polymer-element>
 
 <polymer-element name="x-project" attributes="location">
   <template>
@@ -75,7 +75,7 @@
         photoId="{{location.photoId}}" doc="{{doc}}"></x-annotator>
     </template>
   </template>
-</polymer>
+</polymer-element>
 
 <polymer-element name="x-overview" attributes="projectId doc">
   <template>
@@ -84,16 +84,45 @@
     <div class="container">
       <h1>My Dice</h1>
       <a class="btn btn-primary" href='#/p/{{projectId}}/upload'>Upload photos</a>
-      <h2>Unannotated photos ({{overview.unlabeled.length}})</h2>
+      <h2>Unannotated photos ({{unlabeled.length}})</h2>
       <ul>
-        <template repeat="{{photo in overview.unlabeled}}">
-          <li><a href="#/p/{{projectId}}/a/{{photo.id}}">{{photo.id}}</a></li>
+        <template repeat="{{photo in unlabeled}}">
+          <li><a href="/#/p/{{projectId}}/a/{{photo.id}}">{{photo.id}}</a></li>
         </template>
       </ul>
+
+      <h2>Bad Pip Photos</h2>
+      <ul>
+        <template repeat="{{photo in badPips}}">
+          <li><a href="/#/p/{{projectId}}/a/{{photo.id}}">{{photo.id}}</a> has {{photo.annotations.pips.length}}</li>
+        </template>
+      </ul>
+
+      <h2>Die problems</h2>
+      <ul>
+        <template repeat="{{problem in dieProblems}}">
+          <template if="{{problem.photos.length == 0}}">
+            <li>{{problem.user}}/{{problem.name}} has no picture for face {{problem.side}}</li>
+          </template>
+          <template if="{{problem.photos.length != 0}}">
+            <li>{{problem.user}}/{{problem.name}} has multiple pictures for face {{problem.side}}</li>
+            <ul>
+              <template repeat="{{photo in problem.photos}}">
+                <li><a href="/#/p/{{projectId}}/a/{{photo.id}}">{{photo.id}}</a></li>
+              </template>
+            </ul>
+          </template>
+        </template>
+      </ul>
+
+      <h2>Users</h2>
+      <template repeat="{{userId in userIds}}">
+        <user-editor doc="{{doc}}" userId="{{userId}}"></user-editor>
+      </template>
     </div>
   </template>
   <script src="/lib.js"></script>
-</polymer>
+</polymer-element>
 
 <polymer-element name="x-upload" attributes="projectId doc">
   <template>
@@ -155,33 +184,70 @@
             <input class="form-control" value="{{annotations.description}}">
           </div>
           <button class="btn btn-warning" on-click="{{resetAnno}}">Reset</button>
+          <button class="btn btn-danger" on-click="{{deletePhoto}}">Delete Photo</button>
         </div>
       </div>
     </div>
-
-    <!-- <google-signin-aware on-google-signin-aware-success="{{authReady}}">
-    </google-signin-aware>
-    <realtime-doc id="doc" fileId="{{fileId}}"
-      on-realtime-doc-loaded="{{loaded}}"></realtime-doc>
-    <template if="{{pickerApi &amp;&amp; authToken}}">
-      <button on-click="{{showPicker}}">Pick</button>
-    </template>
-    <h1>Unidentified photos</h1>
-    <ul>
-      <template repeat="{{photo in unlabeled}}">
-        <li><a href="#/p/{{fileId}}/a/{{photo[0]}}">{{photo[0]}}</a></li>
-      </template>
-    </ul> -->
   </template>
   <script src="/lib.js"></script>
-</polymer>
+</polymer-element>
 
+<polymer-element name="user-editor" attributes="doc userId">
+  <template>
+    <link rel="stylesheet"
+      href="/components/bootstrap/dist/css/bootstrap.min.css">
+    <style>
+      h3 {color: red;}
+      h3.complete {color: black;}
+    </style>
+    <user-model doc="{{doc}}" userId="{{userId}}" data="{{data}}"
+      on-changed="{{update}}"></user-model>
+    <div class="row">
+      <div class="col-md-12">
+        <h3 class="{{isComplete ? 'complete' : ''}}">{{userId}}</h3>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-4 form-group">
+        <label>Name</label>
+        <input class="form-control" value="{{data.name}}">
+      </div>
+      <div class="col-md-4 form-group">
+        <label>Sex</label>
+        <select class="form-control" value="{{data.sex}}">
+          <option></option>
+          <option value="f">Female</option>
+          <option value="m">Male</option>
+        </select>
+      </div>
+      <div class="col-md-4 form-group">
+        <label>Group</label>
+        <input class="form-control" value="{{data.group}}">
+      </div>
+      <!-- <div class="form-group">
+          <label>Die name</label>
+          <input class="form-control" value="{{annotations.name}}">
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <input class="form-control" value="{{annotations.description}}">
+        </div>
+        <button class="btn btn-warning" on-click="{{resetAnno}}">Reset</button>
+      </div> -->
+    </div>
+  </template>
+  <script src="/lib.js"></script>
+</polymer-element>
 
 <polymer-element name="photo-model" attributes="doc photoId annotations">
   <template></template>
   <script src="/lib.js"></script>
-</polymer>
+</polymer-element>
 
+<polymer-element name="user-model" attributes="doc userId data">
+  <template></template>
+  <script src="/lib.js"></script>
+</polymer-element>
 
 <polymer-element name="realtime-doc" attributes="fileId">
   <template>
@@ -189,4 +255,4 @@
     </google-signin-aware>
   </template>
   <script src="/lib.js"></script>
-</polymer>
+</polymer-element>
