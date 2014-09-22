@@ -90,6 +90,31 @@
           <li><a href="/#/p/{{projectId}}/a/{{photo.id}}">{{photo.id}}</a></li>
         </template>
       </ul>
+
+      <h2>Bad Pip Photos</h2>
+      <ul>
+        <template repeat="{{photo in badPips}}">
+          <li><a href="/#/p/{{projectId}}/a/{{photo.id}}">{{photo.id}}</a> has {{photo.annotations.pips.length}}</li>
+        </template>
+      </ul>
+
+      <h2>Die problems</h2>
+      <ul>
+        <template repeat="{{problem in dieProblems}}">
+          <template if="{{problem.photos.length == 0}}">
+            <li>{{problem.user}}/{{problem.name}} has no picture for face {{problem.side}}</li>
+          </template>
+          <template if="{{problem.photos.length != 0}}">
+            <li>{{problem.user}}/{{problem.name}} has multiple pictures for face {{problem.side}}</li>
+            <ul>
+              <template repeat="{{photo in problem.photos}}">
+                <li><a href="/#/p/{{projectId}}/a/{{photo.id}}">{{photo.id}}</a></li>
+              </template>
+            </ul>
+          </template>
+        </template>
+      </ul>
+
       <h2>Users</h2>
       <template repeat="{{userId in userIds}}">
         <user-editor doc="{{doc}}" userId="{{userId}}"></user-editor>
@@ -159,6 +184,7 @@
             <input class="form-control" value="{{annotations.description}}">
           </div>
           <button class="btn btn-warning" on-click="{{resetAnno}}">Reset</button>
+          <button class="btn btn-danger" on-click="{{deletePhoto}}">Delete Photo</button>
         </div>
       </div>
     </div>

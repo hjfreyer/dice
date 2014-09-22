@@ -118,31 +118,6 @@ class User
   isComplete: () ->
     @data.sex && @data.name && @data.group
 
-
-# Overview.build = (root) ->
-#   unlabeled = []
-#   users = []
-#
-#   userMap = {}
-#   photos = root.get('photos')
-#   for item in photos.items()
-#     id = item[0]
-#     annotations = item[1].get('annotations')
-#     if !annotations.user || !annotations.name
-#       unlabeled.push([id, annotations])
-#     else
-#       userMap[annotations.user] ?= {}
-#       userMap[annotations.user][annotations.name] ?= []
-#       userMap[annotations.user][annotations.name].push(
-#         new Photo(id, annotations))
-#   for user, names of userMap
-#     dice = []
-#     for name, photos of names
-#       dice.push(new Die(name, photos))
-#     users.push(new User(user, dice))
-#
-#   return new Overview(unlabeled, users)
-
 Polymer('x-project', {
   docReady: () ->
     @doc = @$.doc.doc
@@ -256,7 +231,9 @@ Polymer('x-overview', {
     @fileId = null
     @doc = null
     @unlabeled = null
+    @problems = null
     @users = null
+
 
   docChanged: () ->
     @doc.getModel().getRoot().get('photos').addEventListener(
@@ -277,7 +254,37 @@ Polymer('x-overview', {
       if p.annotations.user
         userIds[p.annotations.user] = true
     @userIds = (id for id of userIds)
-    @unlabeled = (p for p in photos when !p.isAnnotated())
+
+    @unlabeled = []
+    @badPips = []
+    dieToPhotos = {}
+    until photos.length == 0
+      p = photos.pop()
+      if !p.isAnnotated()
+        @unlabeled.push(p)
+        continue
+      if !(2 < p.annotations.pips.length <= 6)
+        @badPips.push(p)
+        continue
+      key = p.annotations.user + ',' + p.annotations.name
+      dieToPhotos[key] ?= []
+      dieToPhotos[key].push(p)
+
+    @dieProblems = []
+    for key, photos of dieToPhotos
+      covered = {}
+      for c in [3..6]
+        covered[c] = []
+      for p in photos
+        covered[p.annotations.pips.length].push(p)
+      for c in [3..6]
+        if covered[c].length != 1
+          @dieProblems.push(
+            user: photos[0].annotations.user
+            name: photos[0].annotations.name
+            side: c,
+            photos: covered[c]
+          )
 
   getPhotos: () ->
     photos = @doc?.getModel().getRoot().get('photos')
@@ -318,7 +325,7 @@ Polymer('x-upload', {
     for doc in o.docs
       initPhoto(@doc, doc.id, {user: @user, name: @name})
 
-    location.hash = '/#/p/' + @projectId
+    location.hash = '#/p/' + @projectId
 
   update: () ->
     photos = @getPhotos()
@@ -348,7 +355,8 @@ Polymer('x-annotator', {
     @annotator.setAnnotations(@annotations)
 
   deletePhoto: () ->
-
+    @doc.getModel().getRoot().get('photos').delete(@photoId)
+    location.hash = '#/p/' + @projectId
 })
 
 Polymer('user-editor', {
