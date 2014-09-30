@@ -1,5 +1,5 @@
 (function() {
-  var Photo, User, docPromises, exec, getDoc, getRealtime, globals, initDoc, initPhoto, initUser, realtimePromise;
+  var COLORS, Csv, Photo, User, docPromises, exec, getCsv, getDoc, getRealtime, globals, groupBy, groupByFunc, initDoc, initPhoto, initUser, realtimePromise;
 
   globals = {
     CLIENT_ID: '895593330219-dagqsd3t6aqm8qtvp9t02mkd4aafnkbi.apps.' + 'googleusercontent.com',
@@ -84,6 +84,91 @@
     }
   });
 
+  Csv = (function() {
+    function Csv() {
+      this.rows = [];
+    }
+
+    Csv.prototype.addRow = function(row) {
+      return this.rows.push(row);
+    };
+
+    Csv.prototype.toString = function() {
+      var row, rowStrs;
+      rowStrs = (function() {
+        var _i, _len, _ref, _results;
+        _ref = this.rows;
+        _results = [];
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          row = _ref[_i];
+          _results.push('"' + row.join('","') + '"');
+        }
+        return _results;
+      }).call(this);
+      return rowStrs.join('\n');
+    };
+
+    return Csv;
+
+  })();
+
+  COLORS = ['Yellow', 'Green', 'Blue', 'Red'];
+
+  getCsv = function(doc) {
+    var attr, byDie, byPips, color, csv, face, header, item, photos, row, user, userData, _i, _j, _k, _l, _len, _len1, _len2, _m, _ref, _ref1, _ref2, _ref3;
+    header = ['ID', 'Name', 'Sex', 'Group'];
+    for (_i = 0, _len = COLORS.length; _i < _len; _i++) {
+      color = COLORS[_i];
+      for (face = _j = 3; _j <= 6; face = ++_j) {
+        _ref = ['Coords', 'Desc'];
+        for (_k = 0, _len1 = _ref.length; _k < _len1; _k++) {
+          attr = _ref[_k];
+          header.push("" + color + " (" + face + ") " + attr);
+        }
+      }
+    }
+    csv = new Csv();
+    csv.addRow(header);
+    photos = doc.getModel().getRoot().get('photos');
+    photos = (function() {
+      var _l, _len2, _ref1, _results;
+      _ref1 = photos.items();
+      _results = [];
+      for (_l = 0, _len2 = _ref1.length; _l < _len2; _l++) {
+        item = _ref1[_l];
+        _results.push(new Photo(item[0], item[1].get('annotations')));
+      }
+      return _results;
+    })();
+    _ref1 = groupBy('user', photos);
+    for (user in _ref1) {
+      photos = _ref1[user];
+      userData = (_ref2 = doc.getModel().getRoot().get('users').get(user)) != null ? _ref2.get('data') : void 0;
+      row = [user, userData != null ? userData.name : void 0, userData != null ? userData.sex : void 0, userData != null ? userData.group : void 0];
+      byDie = groupBy('name', photos);
+      for (_l = 0, _len2 = COLORS.length; _l < _len2; _l++) {
+        color = COLORS[_l];
+        photos = (_ref3 = byDie[color]) != null ? _ref3 : [];
+        byPips = groupByFunc((function(x) {
+          var _ref4, _ref5;
+          return (_ref4 = (_ref5 = x.pips) != null ? _ref5.length : void 0) != null ? _ref4 : 0;
+        }), photos);
+        for (face = _m = 3; _m <= 6; face = ++_m) {
+          photos = byPips[face];
+          if (!photos) {
+            row.push('');
+            row.push('');
+          } else {
+            row.push(photos[0].getCoordsString());
+            row.push(photos[0].description);
+          }
+        }
+      }
+      csv.addRow(row);
+    }
+    return csv.toString();
+  };
+
   Polymer('x-create', {
     ready: function() {
       this.api = null;
@@ -127,33 +212,61 @@
     }
   });
 
-  ({
-    groupBy: function(property, records) {
-      var r, results, _i, _len, _name;
-      results = {};
-      for (_i = 0, _len = records.length; _i < _len; _i++) {
-        r = records[_i];
-        if (results[_name = r[property]] == null) {
-          results[_name] = [];
-        }
-        results[r[property]].push(r);
+  groupByFunc = function(func, records) {
+    var p, r, results, _i, _len;
+    results = {};
+    for (_i = 0, _len = records.length; _i < _len; _i++) {
+      r = records[_i];
+      p = func(r);
+      if (!p) {
+        continue;
       }
-      return results;
+      if (results[p] == null) {
+        results[p] = [];
+      }
+      results[p].push(r);
     }
-  });
+    return results;
+  };
+
+  groupBy = function(property, records) {
+    return groupByFunc((function(x) {
+      return x[property];
+    }), records);
+  };
 
   Photo = (function() {
     function Photo(id, annotations) {
+      var k, v;
       this.id = id;
-      this.annotations = annotations;
+      for (k in annotations) {
+        v = annotations[k];
+        this[k] = v;
+      }
     }
 
     Photo.prototype.isLabeled = function() {
-      return this.annotations.user && this.annotations.name;
+      return this.user && this.name;
     };
 
     Photo.prototype.isAnnotated = function() {
-      return this.isLabeled() && this.annotations.grid && this.annotations.pips;
+      return this.isLabeled() && this.grid && this.pips && this.description;
+    };
+
+    Photo.prototype.getCoordsString = function() {
+      var coords, p, x, y, _i, _len, _ref;
+      if (!(this.grid && (this.grid.x != null) && (this.grid.y != null) && this.grid.width && this.grid.height && this.pips)) {
+        return '';
+      }
+      coords = [];
+      _ref = this.pips;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        p = _ref[_i];
+        x = Math.round((p.x - this.grid.x) / this.grid.width * 10.0);
+        y = Math.round((p.y - this.grid.y) / this.grid.height * 10.0);
+        coords.push("(" + x + "," + y + ")");
+      }
+      return coords.join(',');
     };
 
     return Photo;
@@ -342,7 +455,7 @@
       return this.update();
     },
     update: function() {
-      var c, covered, dieToPhotos, id, key, p, photos, userIds, _i, _j, _k, _len, _len1, _ref, _results;
+      var c, covered, dieToPhotos, id, key, p, photos, userIds, _i, _j, _k, _l, _len, _len1, _ref;
       photos = this.getPhotos();
       if (!photos) {
         return;
@@ -350,8 +463,8 @@
       userIds = {};
       for (_i = 0, _len = photos.length; _i < _len; _i++) {
         p = photos[_i];
-        if (p.annotations.user) {
-          userIds[p.annotations.user] = true;
+        if (p.user) {
+          userIds[p.user] = true;
         }
       }
       this.userIds = (function() {
@@ -371,18 +484,17 @@
           this.unlabeled.push(p);
           continue;
         }
-        if (!((2 < (_ref = p.annotations.pips.length) && _ref <= 6))) {
+        if (!((2 < (_ref = p.pips.length) && _ref <= 6))) {
           this.badPips.push(p);
           continue;
         }
-        key = p.annotations.user + ',' + p.annotations.name;
+        key = p.user + ',' + p.name;
         if (dieToPhotos[key] == null) {
           dieToPhotos[key] = [];
         }
         dieToPhotos[key].push(p);
       }
       this.dieProblems = [];
-      _results = [];
       for (key in dieToPhotos) {
         photos = dieToPhotos[key];
         covered = {};
@@ -391,27 +503,20 @@
         }
         for (_k = 0, _len1 = photos.length; _k < _len1; _k++) {
           p = photos[_k];
-          covered[p.annotations.pips.length].push(p);
+          covered[p.pips.length].push(p);
         }
-        _results.push((function() {
-          var _l, _results1;
-          _results1 = [];
-          for (c = _l = 3; _l <= 6; c = ++_l) {
-            if (covered[c].length !== 1) {
-              _results1.push(this.dieProblems.push({
-                user: photos[0].annotations.user,
-                name: photos[0].annotations.name,
-                side: c,
-                photos: covered[c]
-              }));
-            } else {
-              _results1.push(void 0);
-            }
+        for (c = _l = 3; _l <= 6; c = ++_l) {
+          if (covered[c].length !== 1) {
+            this.dieProblems.push({
+              user: photos[0].user,
+              name: photos[0].name,
+              side: c,
+              photos: covered[c]
+            });
           }
-          return _results1;
-        }).call(this));
+        }
       }
-      return _results;
+      return this.csv = getCsv(this.doc);
     },
     getPhotos: function() {
       var item, photos, _ref;
@@ -474,27 +579,6 @@
         });
       }
       return location.hash = '#/p/' + this.projectId;
-    },
-    update: function() {
-      var p, photos, unlabeled;
-      photos = this.getPhotos();
-      if (!photos) {
-        return;
-      }
-      unlabeled = (function() {
-        var _i, _len, _results;
-        _results = [];
-        for (_i = 0, _len = photos.length; _i < _len; _i++) {
-          p = photos[_i];
-          if (!p.isLabeled()) {
-            _results.push(p);
-          }
-        }
-        return _results;
-      })();
-      return this.overview = {
-        unlabeled: unlabeled
-      };
     }
   });
 
