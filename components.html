@@ -84,6 +84,7 @@
     <div class="container">
       <h1>My Dice</h1>
       <a class="btn btn-primary" href='#/p/{{projectId}}/upload'>Upload photos</a>
+      <button class="btn btn-default" on-click="{{export}}">Export</button>
       <h2>Unannotated photos ({{unlabeled.length}})</h2>
       <ul>
         <template repeat="{{photo in unlabeled}}">

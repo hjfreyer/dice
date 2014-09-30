@@ -518,6 +518,10 @@
       }
       return this.csv = getCsv(this.doc);
     },
+    "export": function() {
+      this.update();
+      return document.location = 'data:text/csv,' + encodeURIComponent(this.csv);
+    },
     getPhotos: function() {
       var item, photos, _ref;
       photos = (_ref = this.doc) != null ? _ref.getModel().getRoot().get('photos') : void 0;
