@@ -166,9 +166,6 @@
       annotations="{{annotations}}"></photo-model>
     <div class="container">
       <div class="row">
-        <a class="btn btn-default" href="/#/p/{{projectId}}">Back</a>
-      </div>
-      <div class="row">
         <div class="col-md-8">
           <canvas id="canvas" width="{{width}}" height="{{height}}"></canvas>
         </div>
@@ -185,6 +182,7 @@
             <label>Description</label>
             <input class="form-control" value="{{annotations.description}}">
           </div>
+          <a class="btn btn-primary" href="/#/p/{{projectId}}">Save</a>
           <button class="btn btn-warning" on-click="{{resetAnno}}">Reset</button>
           <button class="btn btn-danger" on-click="{{deletePhoto}}">Delete Photo</button>
         </div>
