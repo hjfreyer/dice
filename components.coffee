@@ -353,6 +353,10 @@ Polymer('x-overview', {
           )
     @csv = getCsv(@doc)
 
+  export: () ->
+    @update()
+    document.location = 'data:text/csv,' + encodeURIComponent(@csv)
+
   getPhotos: () ->
     photos = @doc?.getModel().getRoot().get('photos')
     return if !photos
