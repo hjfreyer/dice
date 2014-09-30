@@ -55,6 +55,55 @@ Polymer('x-body', {
     @authReady = true
 })
 
+class Csv
+  constructor: () ->
+    @rows = []
+
+  addRow: (row) ->
+    @rows.push(row)
+
+  toString: () ->
+    rowStrs = ('"' + row.join('","') + '"' for row in @rows)
+    return rowStrs.join('\n')
+
+COLORS = ['Yellow', 'Green', 'Blue', 'Red']
+
+getCsv = (doc) ->
+  header = ['ID', 'Name', 'Sex', 'Group']
+  for color in COLORS
+    for face in [3..6]
+      for attr in ['Coords', 'Desc']
+        header.push("#{color} (#{face}) #{attr}")
+
+  csv = new Csv()
+  csv.addRow(header)
+
+  photos = doc.getModel().getRoot().get('photos')
+  photos = (new Photo(item[0],
+    item[1].get('annotations')) for item in photos.items())
+
+  for user, photos of groupBy('user', photos)
+    userData = doc.getModel().getRoot().get('users').get(user)?.get('data')
+    row = [user, userData?.name, userData?.sex, userData?.group]
+
+    byDie = groupBy('name', photos)
+    for color in COLORS
+      photos = byDie[color] ? []
+      byPips = groupByFunc(((x) -> x.pips?.length ? 0), photos)
+      for face in [3..6]
+        photos = byPips[face]
+        if !photos
+          row.push('')
+          row.push('')
+        else
+          row.push(photos[0].getCoordsString())
+          row.push(photos[0].description)
+
+    csv.addRow(row)
+
+
+  return csv.toString()
+
 Polymer('x-create', {
   ready: () ->
     @api = null
@@ -97,20 +146,37 @@ Polymer('x-create', {
       location.hash = '#/p/' + file.id
 })
 
-groupBy: (property, records) ->
+groupByFunc = (func, records) ->
   results = {}
   for r in records
-    results[r[property]] ?= []
-    results[r[property]].push(r)
+    p = func(r)
+    continue unless p
+    results[p] ?= []
+    results[p].push(r)
   return results
 
-class Photo
-  constructor: (@id, @annotations) ->
+groupBy = (property, records) ->
+  return groupByFunc(((x) -> x[property]), records)
 
-  isLabeled: () -> @annotations.user && @annotations.name
+class Photo
+  constructor: (@id, annotations) ->
+    for k, v of annotations
+      this[k] = v
+
+  isLabeled: () -> @user && @name
 
   isAnnotated: () ->
-    @isLabeled() && @annotations.grid && @annotations.pips
+    return (@isLabeled() && @grid && @pips && @description)
+
+  getCoordsString: () ->
+    return '' unless @grid && @grid.x? && @grid.y? &&
+      @grid.width && @grid.height && @pips
+    coords = []
+    for p in @pips
+      x = Math.round((p.x - @grid.x) / @grid.width * 10.0)
+      y = Math.round((p.y - @grid.y) / @grid.height * 10.0)
+      coords.push("(#{x},#{y})")
+    return coords.join(',')
 
 class User
   constructor: (@id, @data) ->
@@ -251,8 +317,8 @@ Polymer('x-overview', {
     return if !photos
     userIds = {}
     for p in photos
-      if p.annotations.user
-        userIds[p.annotations.user] = true
+      if p.user
+        userIds[p.user] = true
     @userIds = (id for id of userIds)
 
     @unlabeled = []
@@ -263,10 +329,10 @@ Polymer('x-overview', {
       if !p.isAnnotated()
         @unlabeled.push(p)
         continue
-      if !(2 < p.annotations.pips.length <= 6)
+      if !(2 < p.pips.length <= 6)
         @badPips.push(p)
         continue
-      key = p.annotations.user + ',' + p.annotations.name
+      key = p.user + ',' + p.name
       dieToPhotos[key] ?= []
       dieToPhotos[key].push(p)
 
@@ -276,15 +342,16 @@ Polymer('x-overview', {
       for c in [3..6]
         covered[c] = []
       for p in photos
-        covered[p.annotations.pips.length].push(p)
+        covered[p.pips.length].push(p)
       for c in [3..6]
         if covered[c].length != 1
           @dieProblems.push(
-            user: photos[0].annotations.user
-            name: photos[0].annotations.name
+            user: photos[0].user
+            name: photos[0].name
             side: c,
             photos: covered[c]
           )
+    @csv = getCsv(@doc)
 
   getPhotos: () ->
     photos = @doc?.getModel().getRoot().get('photos')
@@ -326,13 +393,6 @@ Polymer('x-upload', {
       initPhoto(@doc, doc.id, {user: @user, name: @name})
 
     location.hash = '#/p/' + @projectId
-
-  update: () ->
-    photos = @getPhotos()
-    return if !photos
-    unlabeled = (p for p in photos when !p.isLabeled())
-    @overview =
-      unlabeled: unlabeled
 })
 
 Polymer('x-annotator', {
